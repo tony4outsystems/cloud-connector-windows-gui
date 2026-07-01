@@ -4,6 +4,9 @@ namespace CloudConnectorWindowsGui;
 
 internal sealed class MainForm : Form
 {
+    private const int MinimumEndpointsGridHeight = 220;
+    private const int MinimumLogHeight = 240;
+
     private readonly TextBox addressTextBox = new();
     private readonly TextBox tokenTextBox = new();
     private readonly TextBox proxyTextBox = new();
@@ -22,7 +25,8 @@ internal sealed class MainForm : Form
     {
         Text = "OutSystems Cloud Connector";
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? Icon;
-        MinimumSize = new Size(920, 700);
+        Size = new Size(1000, 840);
+        MinimumSize = new Size(920, 800);
         StartPosition = FormStartPosition.CenterScreen;
         AutoScaleMode = AutoScaleMode.Dpi;
 
@@ -61,7 +65,8 @@ internal sealed class MainForm : Form
         {
             Dock = DockStyle.Top,
             ColumnCount = 2,
-            AutoSize = true
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink
         };
         inputs.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
         inputs.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -77,38 +82,47 @@ internal sealed class MainForm : Form
 
         verboseCheckBox.Text = "Verbose logs";
         verboseCheckBox.AutoSize = true;
+        verboseCheckBox.MinimumSize = new Size(0, 32);
         verboseCheckBox.Margin = new Padding(110, 8, 0, 10);
         inputs.SetColumnSpan(verboseCheckBox, 2);
         inputs.Controls.Add(verboseCheckBox);
 
-        var binaryPanel = new FlowLayoutPanel
+        var binaryPanel = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
-            FlowDirection = FlowDirection.LeftToRight,
+            ColumnCount = 2,
             AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
             Padding = new Padding(0, 4, 0, 12)
         };
+        binaryPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        binaryPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         root.Controls.Add(binaryPanel);
 
         updateBinaryButton.Text = "Download / Update Binary";
         ConfigureActionButton(updateBinaryButton, 190);
         binaryVersionLabel.AutoSize = true;
-        binaryVersionLabel.Padding = new Padding(12, 7, 0, 0);
+        binaryVersionLabel.Anchor = AnchorStyles.Left;
+        binaryVersionLabel.Margin = new Padding(12, 0, 0, 0);
         binaryVersionLabel.Text = "Connector binary: not checked";
 
-        binaryPanel.Controls.Add(updateBinaryButton);
-        binaryPanel.Controls.Add(binaryVersionLabel);
+        binaryPanel.Controls.Add(updateBinaryButton, 0, 0);
+        binaryPanel.Controls.Add(binaryVersionLabel, 1, 0);
 
         ConfigureEndpointGrid();
         root.Controls.Add(endpointsGrid);
 
-        var actions = new FlowLayoutPanel
+        var actions = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
-            FlowDirection = FlowDirection.LeftToRight,
+            ColumnCount = 3,
             AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
             Padding = new Padding(0, 12, 0, 12)
         };
+        actions.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        actions.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        actions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         root.Controls.Add(actions);
 
         startButton.Text = "Start";
@@ -116,17 +130,19 @@ internal sealed class MainForm : Form
         stopButton.Text = "Stop";
         ConfigureActionButton(stopButton, 100);
         statusLabel.AutoSize = true;
-        statusLabel.Padding = new Padding(16, 7, 0, 0);
+        statusLabel.Anchor = AnchorStyles.Left;
+        statusLabel.Margin = new Padding(16, 0, 0, 0);
 
-        actions.Controls.Add(startButton);
-        actions.Controls.Add(stopButton);
-        actions.Controls.Add(statusLabel);
+        actions.Controls.Add(startButton, 0, 0);
+        actions.Controls.Add(stopButton, 1, 0);
+        actions.Controls.Add(statusLabel, 2, 0);
 
         logTextBox.Dock = DockStyle.Fill;
         logTextBox.Multiline = true;
         logTextBox.ReadOnly = true;
         logTextBox.ScrollBars = ScrollBars.Vertical;
         logTextBox.Font = new Font(FontFamily.GenericMonospace, 9);
+        logTextBox.MinimumSize = new Size(0, MinimumLogHeight);
         root.Controls.Add(logTextBox);
     }
 
@@ -134,7 +150,7 @@ internal sealed class MainForm : Form
     {
         button.AutoSize = true;
         button.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-        button.MinimumSize = new Size(minimumWidth, 36);
+        button.MinimumSize = new Size(minimumWidth, 40);
         button.Padding = new Padding(10, 5, 10, 5);
         button.Margin = new Padding(3, 3, 6, 3);
     }
@@ -151,6 +167,7 @@ internal sealed class MainForm : Form
         });
 
         textBox.Dock = DockStyle.Top;
+        textBox.MinimumSize = new Size(0, 32);
         textBox.Margin = new Padding(0, 4, 0, 4);
         panel.Controls.Add(textBox);
     }
@@ -158,12 +175,16 @@ internal sealed class MainForm : Form
     private void ConfigureEndpointGrid()
     {
         endpointsGrid.Dock = DockStyle.Fill;
+        endpointsGrid.MinimumSize = new Size(0, MinimumEndpointsGridHeight);
         endpointsGrid.AllowUserToAddRows = true;
         endpointsGrid.AllowUserToDeleteRows = true;
         endpointsGrid.AutoGenerateColumns = false;
         endpointsGrid.RowHeadersWidth = 28;
         endpointsGrid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         endpointsGrid.MultiSelect = false;
+        endpointsGrid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+        endpointsGrid.RowTemplate.Height = 30;
+        endpointsGrid.BackgroundColor = SystemColors.Window;
         endpointsGrid.Columns.Add(new DataGridViewTextBoxColumn
         {
             HeaderText = "Local port",
