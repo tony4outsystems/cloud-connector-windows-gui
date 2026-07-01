@@ -23,6 +23,7 @@ internal sealed class MainForm : Form
         Text = "OutSystems Cloud Connector";
         MinimumSize = new Size(920, 700);
         StartPosition = FormStartPosition.CenterScreen;
+        AutoScaleMode = AutoScaleMode.Dpi;
 
         BuildLayout();
         WireEvents();
@@ -89,7 +90,7 @@ internal sealed class MainForm : Form
         root.Controls.Add(binaryPanel);
 
         updateBinaryButton.Text = "Download / Update Binary";
-        updateBinaryButton.Width = 180;
+        ConfigureActionButton(updateBinaryButton, 190);
         binaryVersionLabel.AutoSize = true;
         binaryVersionLabel.Padding = new Padding(12, 7, 0, 0);
         binaryVersionLabel.Text = "Connector binary: not checked";
@@ -110,9 +111,9 @@ internal sealed class MainForm : Form
         root.Controls.Add(actions);
 
         startButton.Text = "Start";
-        startButton.Width = 100;
+        ConfigureActionButton(startButton, 100);
         stopButton.Text = "Stop";
-        stopButton.Width = 100;
+        ConfigureActionButton(stopButton, 100);
         statusLabel.AutoSize = true;
         statusLabel.Padding = new Padding(16, 7, 0, 0);
 
@@ -126,6 +127,15 @@ internal sealed class MainForm : Form
         logTextBox.ScrollBars = ScrollBars.Vertical;
         logTextBox.Font = new Font(FontFamily.GenericMonospace, 9);
         root.Controls.Add(logTextBox);
+    }
+
+    private static void ConfigureActionButton(Button button, int minimumWidth)
+    {
+        button.AutoSize = true;
+        button.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        button.MinimumSize = new Size(minimumWidth, 36);
+        button.Padding = new Padding(10, 5, 10, 5);
+        button.Margin = new Padding(3, 3, 6, 3);
     }
 
     private static void AddLabeledControl(TableLayoutPanel panel, string label, TextBox textBox)
@@ -155,7 +165,7 @@ internal sealed class MainForm : Form
         endpointsGrid.MultiSelect = false;
         endpointsGrid.Columns.Add(new DataGridViewTextBoxColumn
         {
-            HeaderText = "Local secure-gateway port",
+            HeaderText = "Local port",
             Name = "LocalPort",
             Width = 190
         });
