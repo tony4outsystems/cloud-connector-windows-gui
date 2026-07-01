@@ -22,7 +22,7 @@ internal sealed class ConnectorProcess
 
         if (!File.Exists(executablePath))
         {
-            throw new FileNotFoundException("outsystemscc.exe was not found beside the launcher.", executablePath);
+            throw new FileNotFoundException("outsystemscc.exe is not installed. Download the connector binary first.", executablePath);
         }
 
         var startInfo = new ProcessStartInfo

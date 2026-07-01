@@ -11,9 +11,12 @@ internal sealed class MainForm : Form
     private readonly DataGridView endpointsGrid = new();
     private readonly Button startButton = new();
     private readonly Button stopButton = new();
+    private readonly Button updateBinaryButton = new();
+    private readonly Label binaryVersionLabel = new();
     private readonly Label statusLabel = new();
     private readonly TextBox logTextBox = new();
     private readonly ConnectorProcess connector = new();
+    private readonly CloudConnectorBinaryManager binaryManager = new();
 
     public MainForm()
     {
@@ -33,8 +36,9 @@ internal sealed class MainForm : Form
             Dock = DockStyle.Fill,
             Padding = new Padding(16),
             ColumnCount = 1,
-            RowCount = 5
+            RowCount = 6
         };
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 44));
@@ -74,6 +78,24 @@ internal sealed class MainForm : Form
         verboseCheckBox.Margin = new Padding(110, 8, 0, 10);
         inputs.SetColumnSpan(verboseCheckBox, 2);
         inputs.Controls.Add(verboseCheckBox);
+
+        var binaryPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            FlowDirection = FlowDirection.LeftToRight,
+            AutoSize = true,
+            Padding = new Padding(0, 4, 0, 12)
+        };
+        root.Controls.Add(binaryPanel);
+
+        updateBinaryButton.Text = "Download / Update Binary";
+        updateBinaryButton.Width = 180;
+        binaryVersionLabel.AutoSize = true;
+        binaryVersionLabel.Padding = new Padding(12, 7, 0, 0);
+        binaryVersionLabel.Text = "Connector binary: not checked";
+
+        binaryPanel.Controls.Add(updateBinaryButton);
+        binaryPanel.Controls.Add(binaryVersionLabel);
 
         ConfigureEndpointGrid();
         root.Controls.Add(endpointsGrid);
@@ -155,12 +177,18 @@ internal sealed class MainForm : Form
     {
         startButton.Click += (_, _) => StartConnector();
         stopButton.Click += async (_, _) => await StopConnectorAsync().ConfigureAwait(true);
+        updateBinaryButton.Click += async (_, _) => await InstallOrUpdateBinaryAsync(force: true).ConfigureAwait(true);
         connector.OutputReceived += line => BeginInvoke(() => AppendLog(line));
         connector.Exited += exitCode => BeginInvoke(() =>
         {
             AppendLog($"outsystemscc exited with code {exitCode}");
             SetRunningState(false);
         });
+        Shown += async (_, _) =>
+        {
+            await RefreshBinaryVersionAsync().ConfigureAwait(true);
+            await InstallOrUpdateBinaryAsync(force: false).ConfigureAwait(true);
+        };
         FormClosing += async (_, args) =>
         {
             if (connector.IsRunning)
@@ -182,12 +210,17 @@ internal sealed class MainForm : Form
             return;
         }
 
-        var executablePath = Path.Combine(AppContext.BaseDirectory, "outsystemscc.exe");
         try
         {
+            if (!File.Exists(binaryManager.ExecutablePath))
+            {
+                MessageBox.Show("The connector binary is not installed yet. Use Download / Update Binary first.", "Cannot start connector", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             logTextBox.Clear();
             AppendLog(ConnectorArguments.ToDisplayCommand("outsystemscc.exe", options));
-            connector.Start(executablePath, options);
+            connector.Start(binaryManager.ExecutablePath, options);
             SetRunningState(true);
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException or ArgumentException)
@@ -250,6 +283,75 @@ internal sealed class MainForm : Form
         tokenTextBox.ReadOnly = running;
         proxyTextBox.ReadOnly = running;
         verboseCheckBox.Enabled = !running;
+        updateBinaryButton.Enabled = !running;
+    }
+
+    private async Task InstallOrUpdateBinaryAsync(bool force)
+    {
+        if (connector.IsRunning)
+        {
+            MessageBox.Show("Stop the connector before updating the binary.", "Connector is running", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        updateBinaryButton.Enabled = false;
+        startButton.Enabled = false;
+        var previousStatus = statusLabel.Text;
+        try
+        {
+            var progress = new Progress<string>(message =>
+            {
+                statusLabel.Text = message;
+                AppendLog(message);
+            });
+
+            var result = force
+                ? await binaryManager.InstallLatestAsync(progress).ConfigureAwait(true)
+                : await binaryManager.EnsureInstalledAsync(progress).ConfigureAwait(true);
+
+            if (result.Installed)
+            {
+                AppendLog($"Installed outsystemscc {result.Version}.");
+            }
+
+            await RefreshBinaryVersionAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException or UnauthorizedAccessException)
+        {
+            AppendLog($"Binary install failed: {ex.Message}");
+            if (force)
+            {
+                MessageBox.Show(ex.Message, "Cannot install connector binary", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        finally
+        {
+            statusLabel.Text = previousStatus;
+            SetRunningState(connector.IsRunning);
+        }
+    }
+
+    private async Task RefreshBinaryVersionAsync()
+    {
+        updateBinaryButton.Enabled = false;
+        try
+        {
+            var status = await binaryManager.GetVersionStatusAsync().ConfigureAwait(true);
+            var current = status.CurrentVersion ?? "not installed";
+            var latest = status.LatestVersion;
+            var suffix = status.IsLatest ? "up to date" : "update available";
+            binaryVersionLabel.Text = $"Connector binary: current {current} / latest {latest} ({suffix})";
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException)
+        {
+            var current = binaryManager.InstalledVersion ?? "not installed";
+            binaryVersionLabel.Text = $"Connector binary: current {current} / latest unavailable";
+            AppendLog($"Version check failed: {ex.Message}");
+        }
+        finally
+        {
+            updateBinaryButton.Enabled = !connector.IsRunning;
+        }
     }
 
     private void AppendLog(string line)

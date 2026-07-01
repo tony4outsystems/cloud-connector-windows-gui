@@ -14,17 +14,26 @@ outsystemscc.exe --header "token: <token>" [--proxy <proxy>] [-v] <address> R:<l
 - TCP endpoint grid with local secure-gateway port, remote host, and remote port.
 - Optional proxy and verbose logging.
 - Start/Stop controls with live stdout/stderr log capture.
-- Bundles `outsystemscc.exe` beside the launcher for simple Windows deployment.
+- Downloads the Windows `outsystemscc.exe` binary from stable GitHub releases of
+  [`tony4outsystems/cloud-connector`](https://github.com/tony4outsystems/cloud-connector).
+- Shows the installed connector version and the latest stable version available on GitHub.
+- Manual Download / Update Binary button.
+
+On first start, the app installs the connector binary into the current user's local app data
+folder. The launcher uses GitHub release JSON from `/releases`, ignores prereleases, selects the
+matching Windows archive for the current CPU architecture, and verifies the release SHA-256 digest
+when GitHub provides one.
 
 ## Build
 
-Install .NET 10 SDK and Go, then run:
+Install .NET 10 SDK, then run:
 
 ```sh
 ./scripts/publish-win-x64.sh
 ```
 
-The script publishes the self-contained Windows app to `artifacts/win-x64` and cross-builds `../cloud-connector/outsystemscc.exe` into the same folder.
+The script publishes the self-contained Windows app to `artifacts/win-x64`. The connector binary is
+downloaded by the app at runtime.
 
 ## Test
 
