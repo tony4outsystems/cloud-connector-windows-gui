@@ -15,8 +15,8 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build and Test
+  build-windows:
+    name: Build and Test Windows
     runs-on: windows-latest
 
     steps:
@@ -74,3 +74,55 @@ jobs:
           } else {
             gh release create $tag $asset --title $tag --notes "Windows GUI launcher release."
           }
+
+  build-macos:
+    name: Build and Test macOS
+    runs-on: macos-latest
+    needs: build-windows
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install MAUI workload
+        run: dotnet workload install maui-maccatalyst
+
+      - name: Restore
+        run: dotnet restore cloud-connector-windows-gui.sln
+
+      - name: Build
+        run: dotnet build cloud-connector-windows-gui.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test tests/cloud-connector-windows-gui.Core.Tests/cloud-connector-windows-gui.Core.Tests.csproj --configuration Release --no-restore
+
+      - name: Publish macOS arm64 GUI
+        run: ./scripts/publish-macos.sh arm64
+
+      - name: Package artifact
+        run: ditto -c -k --sequesterRsrc --keepParent artifacts/macos-arm64 artifacts/cloud-connector-windows-gui-macos-arm64.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-connector-windows-gui-macos-arm64
+          path: artifacts/cloud-connector-windows-gui-macos-arm64.zip
+          if-no-files-found: error
+
+      - name: Upload GitHub release asset
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$GITHUB_REF_NAME"
+          asset="artifacts/cloud-connector-windows-gui-macos-arm64.zip"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$asset" --clobber
+          else
+            gh release create "$tag" "$asset" --title "$tag" --notes "Windows and macOS GUI launcher release."
+          fi

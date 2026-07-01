@@ -179,7 +179,7 @@ public sealed class MainViewModel : ObservableObject
             }
 
             ClearLog();
-            AppendLog(ConnectorArguments.ToDisplayCommand("outsystemscc.exe", options));
+            AppendLog(ConnectorArguments.ToDisplayCommand(binaryManager.ExecutableName, options));
             connector.Start(binaryManager.ExecutablePath, options);
             SetRunningState(true);
         }

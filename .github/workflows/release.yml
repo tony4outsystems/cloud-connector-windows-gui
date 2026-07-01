@@ -16,14 +16,14 @@ permissions:
 
 env:
   DOTNET_VERSION: "10.0.x"
-  ARTIFACT_NAME: cloud-connector-windows-gui-win-x64
   GUI_REPO_PATH: cloud-connector-windows-gui
-  CONNECTOR_REPO_PATH: cloud-connector
 
 jobs:
-  release:
+  release-windows:
     name: Build Windows package
     runs-on: windows-latest
+    env:
+      ARTIFACT_NAME: cloud-connector-windows-gui-win-x64
 
     steps:
       - name: Checkout GUI
@@ -31,22 +31,10 @@ jobs:
         with:
           path: ${{ env.GUI_REPO_PATH }}
 
-      - name: Checkout cloud connector
-        uses: actions/checkout@v4
-        with:
-          repository: tony4outsystems/cloud-connector
-          path: ${{ env.CONNECTOR_REPO_PATH }}
-
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: ${{ env.CONNECTOR_REPO_PATH }}/go.mod
-          cache-dependency-path: ${{ env.CONNECTOR_REPO_PATH }}/go.sum
 
       - name: Install MAUI workload
         working-directory: ${{ env.GUI_REPO_PATH }}
@@ -72,6 +60,59 @@ jobs:
       - name: Publish GitHub release
         working-directory: ${{ env.GUI_REPO_PATH }}
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+          RELEASE_ASSET: artifacts/${{ env.ARTIFACT_NAME }}.zip
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$RELEASE_ASSET" --clobber
+          else
+            gh release create "$RELEASE_TAG" "$RELEASE_ASSET" \
+              --title "$RELEASE_TAG" \
+              --generate-notes \
+              --target "$GITHUB_SHA"
+          fi
+
+  release-macos:
+    name: Build macOS package
+    runs-on: macos-latest
+    needs: release-windows
+    env:
+      ARTIFACT_NAME: cloud-connector-windows-gui-macos-arm64
+
+    steps:
+      - name: Checkout GUI
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.GUI_REPO_PATH }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install MAUI workload
+        working-directory: ${{ env.GUI_REPO_PATH }}
+        run: dotnet workload install maui-maccatalyst
+
+      - name: Publish macOS arm64 package
+        working-directory: ${{ env.GUI_REPO_PATH }}
+        run: ./scripts/publish-macos.sh arm64
+
+      - name: Zip package
+        working-directory: ${{ env.GUI_REPO_PATH }}
+        run: ditto -c -k --sequesterRsrc --keepParent artifacts/macos-arm64 "artifacts/${ARTIFACT_NAME}.zip"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.GUI_REPO_PATH }}/artifacts/${{ env.ARTIFACT_NAME }}.zip
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        working-directory: ${{ env.GUI_REPO_PATH }}
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}

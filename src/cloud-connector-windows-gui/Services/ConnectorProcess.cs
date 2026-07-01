@@ -22,7 +22,7 @@ internal sealed class ConnectorProcess
 
         if (!File.Exists(executablePath))
         {
-            throw new FileNotFoundException("outsystemscc.exe is not installed. Download the connector binary first.", executablePath);
+            throw new FileNotFoundException("outsystemscc is not installed. Download the connector binary first.", executablePath);
         }
 
         var startInfo = new ProcessStartInfo
@@ -55,7 +55,7 @@ internal sealed class ConnectorProcess
 
         if (!process.Start())
         {
-            throw new InvalidOperationException("Failed to start outsystemscc.exe.");
+            throw new InvalidOperationException("Failed to start outsystemscc.");
         }
 
         process.BeginOutputReadLine();

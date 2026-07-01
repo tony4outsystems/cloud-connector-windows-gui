@@ -12,7 +12,7 @@ namespace CloudConnectorWindowsGui.Services;
 internal sealed class CloudConnectorBinaryManager
 {
     private const string ReleasesUrl = "https://api.github.com/repos/tony4outsystems/cloud-connector/releases";
-    private const string ExecutableName = "outsystemscc.exe";
+    private const string BaseExecutableName = "outsystemscc";
     private const string VersionFileName = "version.txt";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -33,6 +33,8 @@ internal sealed class CloudConnectorBinaryManager
         this.httpClient = httpClient;
         this.installDirectory = installDirectory;
     }
+
+    public string ExecutableName => GetCurrentPlatform().ExecutableName;
 
     public string ExecutablePath => Path.Combine(installDirectory, ExecutableName);
 
@@ -71,7 +73,8 @@ internal sealed class CloudConnectorBinaryManager
             return new InstallResult(release.TagName, false);
         }
 
-        var asset = SelectWindowsAsset(release);
+        var platform = GetCurrentPlatform();
+        var asset = SelectPlatformAsset(release, platform);
         progress?.Report($"Downloading {asset.Name}...");
         Directory.CreateDirectory(installDirectory);
 
@@ -88,15 +91,16 @@ internal sealed class CloudConnectorBinaryManager
             ExtractTarGz(archivePath, stagingDirectory);
 
             var extractedExecutable = Directory
-                .EnumerateFiles(stagingDirectory, ExecutableName, SearchOption.AllDirectories)
+                .EnumerateFiles(stagingDirectory, platform.ExecutableName, SearchOption.AllDirectories)
                 .FirstOrDefault();
             if (extractedExecutable is null)
             {
-                throw new InvalidOperationException($"{ExecutableName} was not found in {asset.Name}.");
+                throw new InvalidOperationException($"{platform.ExecutableName} was not found in {asset.Name}.");
             }
 
             Directory.CreateDirectory(installDirectory);
             File.Copy(extractedExecutable, ExecutablePath, overwrite: true);
+            MakeExecutableOnUnix(ExecutablePath);
             File.WriteAllText(Path.Combine(installDirectory, VersionFileName), release.TagName);
 
             return new InstallResult(release.TagName, true);
@@ -122,7 +126,7 @@ internal sealed class CloudConnectorBinaryManager
             ?? throw new InvalidOperationException("No stable cloud-connector release was found.");
     }
 
-    private static ReleaseAsset SelectWindowsAsset(Release release)
+    private static ReleaseAsset SelectPlatformAsset(Release release, ConnectorPlatform platform)
     {
         var architecture = RuntimeInformation.ProcessArchitecture switch
         {
@@ -132,11 +136,40 @@ internal sealed class CloudConnectorBinaryManager
         };
 
         var asset = release.Assets.FirstOrDefault(candidate =>
-            candidate.Name.Contains("_windows_", StringComparison.OrdinalIgnoreCase)
+            candidate.Name.Contains($"_{platform.ReleaseOsName}_", StringComparison.OrdinalIgnoreCase)
             && candidate.Name.Contains($"_{architecture}.", StringComparison.OrdinalIgnoreCase)
             && candidate.Name.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase));
 
-        return asset ?? throw new InvalidOperationException($"Release {release.TagName} does not include a Windows {architecture} archive.");
+        return asset ?? throw new InvalidOperationException($"Release {release.TagName} does not include a {platform.DisplayName} {architecture} archive.");
+    }
+
+    private static ConnectorPlatform GetCurrentPlatform()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return new ConnectorPlatform("windows", "Windows", $"{BaseExecutableName}.exe");
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) || OperatingSystem.IsMacCatalyst())
+        {
+            return new ConnectorPlatform("darwin", "macOS", BaseExecutableName);
+        }
+
+        throw new PlatformNotSupportedException("This launcher can download connector binaries only on Windows and macOS.");
+    }
+
+    private static void MakeExecutableOnUnix(string executablePath)
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return;
+        }
+
+        File.SetUnixFileMode(
+            executablePath,
+            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
+            | UnixFileMode.GroupRead | UnixFileMode.GroupExecute
+            | UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
     }
 
     private async Task DownloadFileAsync(string url, string destinationPath, CancellationToken cancellationToken)
@@ -246,6 +279,8 @@ internal sealed class CloudConnectorBinaryManager
         string Name,
         [property: JsonPropertyName("browser_download_url")] string BrowserDownloadUrl,
         string? Digest);
+
+    private sealed record ConnectorPlatform(string ReleaseOsName, string DisplayName, string ExecutableName);
 }
 
 internal sealed record BinaryVersionStatus(string? CurrentVersion, string LatestVersion, bool IsLatest);
