@@ -2,6 +2,8 @@
 
 A small Windows-only graphical launcher for `outsystemscc.exe`.
 
+![OutSystems Cloud Connector GUI screenshot](docs/app-screenshot.png)
+
 The app helps users build and run this command without typing the raw CLI syntax:
 
 ```text
