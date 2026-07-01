@@ -1,0 +1,71 @@
+name: .NET
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore cloud-connector-windows-gui.sln
+
+      - name: Build
+        run: dotnet build cloud-connector-windows-gui.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test tests/cloud-connector-windows-gui.Core.Tests/cloud-connector-windows-gui.Core.Tests.csproj --configuration Release --no-restore
+
+      - name: Publish Windows x64 GUI
+        run: >
+          dotnet publish src/cloud-connector-windows-gui/cloud-connector-windows-gui.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          --output artifacts/win-x64
+
+      - name: Package artifact
+        shell: pwsh
+        run: Compress-Archive -Path artifacts/win-x64/* -DestinationPath artifacts/cloud-connector-windows-gui-win-x64.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-connector-windows-gui-win-x64
+          path: artifacts/cloud-connector-windows-gui-win-x64.zip
+          if-no-files-found: error
+
+      - name: Upload GitHub release asset
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          $asset = "artifacts/cloud-connector-windows-gui-win-x64.zip"
+          if (gh release view $tag 2>$null) {
+            gh release upload $tag $asset --clobber
+          } else {
+            gh release create $tag $asset --title $tag --notes "Windows GUI launcher release."
+          }
