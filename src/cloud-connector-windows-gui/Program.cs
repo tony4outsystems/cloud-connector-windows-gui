@@ -1,3 +1,6 @@
+using System.Runtime.InteropServices;
+using Avalonia;
+
 namespace CloudConnectorWindowsGui;
 
 internal static class Program
@@ -5,21 +8,29 @@ internal static class Program
     private const string SingleInstanceMutexName = @"Local\OutSystems.CloudConnector.WindowsGui";
 
     [STAThread]
-    private static void Main()
+    public static void Main(string[] args)
     {
-        ApplicationConfiguration.Initialize();
-
         using var singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out var createdNew);
         if (!createdNew)
         {
-            MessageBox.Show(
-                "OutSystems Cloud Connector is already running.",
-                "Already running",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
+            MessageBoxW(IntPtr.Zero, "OutSystems Cloud Connector is already running.", "Already running", MB_OK | MB_ICONINFORMATION);
             return;
         }
 
-        Application.Run(new MainForm());
+        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
+
+    public static AppBuilder BuildAvaloniaApp()
+    {
+        return AppBuilder.Configure<GuiApplication>()
+            .UsePlatformDetect()
+            .WithInterFont()
+            .LogToTrace();
+    }
+
+    private const uint MB_OK = 0x0;
+    private const uint MB_ICONINFORMATION = 0x40;
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);
 }
