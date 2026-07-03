@@ -6,10 +6,19 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build gui",
-      "program": "${workspaceFolder}/src/cloud-connector-windows-gui/bin/Debug/net10.0-windows/cloud-connector-windows-gui.exe",
+      "program": "${workspaceFolder}/src/cloud-connector-windows-gui/bin/Debug/net10.0/cloud-connector-windows-gui",
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
-      "console": "internalConsole"
+      "console": "internalConsole",
+      "windows": {
+        "program": "${workspaceFolder}/src/cloud-connector-windows-gui/bin/Debug/net10.0/cloud-connector-windows-gui.exe"
+      },
+      "osx": {
+        "env": {
+          "DOTNET_ROOT": "/opt/homebrew/opt/dotnet/libexec",
+          "DOTNET_ROOT_ARM64": "/opt/homebrew/opt/dotnet/libexec"
+        }
+      }
     }
   ]
 }
