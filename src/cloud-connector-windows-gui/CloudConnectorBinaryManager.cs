@@ -1,36 +1,27 @@
 using System.Formats.Tar;
 using System.IO.Compression;
-using System.Net.Http.Headers;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace CloudConnectorWindowsGui;
 
 internal sealed class CloudConnectorBinaryManager
 {
-    private const string ReleasesUrl = "https://api.github.com/repos/tony4outsystems/cloud-connector/releases";
     private const string ExecutableName = "outsystemscc.exe";
     private const string VersionFileName = "version.txt";
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
-    private readonly HttpClient httpClient;
+    private readonly GitHubReleaseClient releaseClient;
     private readonly string installDirectory;
 
     public CloudConnectorBinaryManager()
-        : this(CreateHttpClient(), GetDefaultInstallDirectory())
+        : this(new GitHubReleaseClient("tony4outsystems", "cloud-connector", "No stable cloud-connector release was found."), GetDefaultInstallDirectory())
     {
     }
 
-    internal CloudConnectorBinaryManager(HttpClient httpClient, string installDirectory)
+    internal CloudConnectorBinaryManager(GitHubReleaseClient releaseClient, string installDirectory)
     {
-        this.httpClient = httpClient;
+        this.releaseClient = releaseClient;
         this.installDirectory = installDirectory;
     }
 
@@ -47,7 +38,7 @@ internal sealed class CloudConnectorBinaryManager
 
     public async Task<BinaryVersionStatus> GetVersionStatusAsync(CancellationToken cancellationToken = default)
     {
-        var release = await GetLatestReleaseAsync(cancellationToken).ConfigureAwait(false);
+        var release = await releaseClient.GetLatestReleaseAsync(cancellationToken).ConfigureAwait(false);
         return new BinaryVersionStatus(InstalledVersion, release.TagName, IsInstalledVersionLatest(release.TagName));
     }
 
@@ -64,7 +55,7 @@ internal sealed class CloudConnectorBinaryManager
     public async Task<InstallResult> InstallLatestAsync(IProgress<string>? progress = null, CancellationToken cancellationToken = default)
     {
         progress?.Report("Checking GitHub releases...");
-        var release = await GetLatestReleaseAsync(cancellationToken).ConfigureAwait(false);
+        var release = await releaseClient.GetLatestReleaseAsync(cancellationToken).ConfigureAwait(false);
 
         if (File.Exists(ExecutablePath) && IsInstalledVersionLatest(release.TagName))
         {
@@ -80,7 +71,7 @@ internal sealed class CloudConnectorBinaryManager
 
         try
         {
-            await DownloadFileAsync(asset.BrowserDownloadUrl, archivePath, cancellationToken).ConfigureAwait(false);
+            await releaseClient.DownloadFileAsync(asset.BrowserDownloadUrl, archivePath, cancellationToken).ConfigureAwait(false);
             await VerifyDigestAsync(asset, archivePath, cancellationToken).ConfigureAwait(false);
 
             progress?.Report("Installing connector binary...");
@@ -108,21 +99,7 @@ internal sealed class CloudConnectorBinaryManager
         }
     }
 
-    private async Task<Release> GetLatestReleaseAsync(CancellationToken cancellationToken)
-    {
-        using var stream = await httpClient.GetStreamAsync(ReleasesUrl, cancellationToken).ConfigureAwait(false);
-        var releases = await JsonSerializer.DeserializeAsync<List<Release>>(stream, JsonOptions, cancellationToken).ConfigureAwait(false)
-            ?? throw new InvalidOperationException("GitHub returned an empty release list.");
-
-        return releases
-            .Where(release => !release.Draft && !release.Prerelease)
-            .OrderByDescending(release => ParseVersion(release.TagName))
-            .ThenByDescending(release => release.PublishedAt ?? release.CreatedAt)
-            .FirstOrDefault()
-            ?? throw new InvalidOperationException("No stable cloud-connector release was found.");
-    }
-
-    private static ReleaseAsset SelectWindowsAsset(Release release)
+    private static GitHubReleaseAsset SelectWindowsAsset(GitHubRelease release)
     {
         var architecture = RuntimeInformation.ProcessArchitecture switch
         {
@@ -139,17 +116,7 @@ internal sealed class CloudConnectorBinaryManager
         return asset ?? throw new InvalidOperationException($"Release {release.TagName} does not include a Windows {architecture} archive.");
     }
 
-    private async Task DownloadFileAsync(string url, string destinationPath, CancellationToken cancellationToken)
-    {
-        using var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-
-        await using var source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        await using var destination = File.Create(destinationPath);
-        await source.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
-    }
-
-    private static async Task VerifyDigestAsync(ReleaseAsset asset, string archivePath, CancellationToken cancellationToken)
+    private static async Task VerifyDigestAsync(GitHubReleaseAsset asset, string archivePath, CancellationToken cancellationToken)
     {
         if (asset.Digest is null || !asset.Digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase))
         {
@@ -179,25 +146,11 @@ internal sealed class CloudConnectorBinaryManager
         return string.Equals(installedVersion, latestVersion, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static Version ParseVersion(string tagName)
-    {
-        var normalized = tagName.TrimStart('v', 'V');
-        return Version.TryParse(normalized, out var version) ? version : new Version(0, 0);
-    }
-
     private static string GetDefaultInstallDirectory()
     {
         var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         var productName = Assembly.GetExecutingAssembly().GetName().Name ?? "cloud-connector-windows-gui";
         return Path.Combine(localAppData, productName, "cloud-connector");
-    }
-
-    private static HttpClient CreateHttpClient()
-    {
-        var client = new HttpClient();
-        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("cloud-connector-windows-gui", "1.0"));
-        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
-        return client;
     }
 
     private static void TryDeleteFile(string path)
@@ -233,19 +186,6 @@ internal sealed class CloudConnectorBinaryManager
         {
         }
     }
-
-    private sealed record Release(
-        [property: JsonPropertyName("tag_name")] string TagName,
-        bool Draft,
-        bool Prerelease,
-        [property: JsonPropertyName("created_at")] DateTimeOffset? CreatedAt,
-        [property: JsonPropertyName("published_at")] DateTimeOffset? PublishedAt,
-        IReadOnlyList<ReleaseAsset> Assets);
-
-    private sealed record ReleaseAsset(
-        string Name,
-        [property: JsonPropertyName("browser_download_url")] string BrowserDownloadUrl,
-        string? Digest);
 }
 
 internal sealed record BinaryVersionStatus(string? CurrentVersion, string LatestVersion, bool IsLatest);

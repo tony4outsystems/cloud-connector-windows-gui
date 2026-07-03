@@ -11,6 +11,11 @@ internal sealed class MainForm : Form
     private readonly TextBox tokenTextBox = new();
     private readonly TextBox proxyTextBox = new();
     private readonly CheckBox verboseCheckBox = new();
+    private readonly ComboBox selfUpdateCheckIntervalComboBox = new();
+    private readonly Panel selfUpdateBanner = new();
+    private readonly Label selfUpdateBannerLabel = new();
+    private readonly Button selfUpdateButton = new();
+    private readonly Button dismissSelfUpdateButton = new();
     private readonly DataGridView endpointsGrid = new();
     private readonly Button startButton = new();
     private readonly Button stopButton = new();
@@ -20,12 +25,15 @@ internal sealed class MainForm : Form
     private readonly TextBox logTextBox = new();
     private readonly ConnectorProcess connector = new();
     private readonly CloudConnectorBinaryManager binaryManager = new();
+    private readonly SelfUpdateManager selfUpdateManager = new();
     private readonly GuiConfigurationStore configurationStore = new();
     private readonly TableLayoutPanel root = new();
     private readonly string logFilePath = Path.Combine(
         Path.GetDirectoryName(Application.ExecutablePath) ?? AppContext.BaseDirectory,
         "cloud-connector-windows-gui.log");
     private bool logFileErrorShown;
+    private DateOnly? lastSelfUpdateCheck;
+    private SelfUpdateStatus? availableSelfUpdate;
 
     public MainForm()
     {
@@ -61,7 +69,8 @@ internal sealed class MainForm : Form
         root.Dock = DockStyle.Fill;
         root.Padding = new Padding(16);
         root.ColumnCount = 1;
-        root.RowCount = 6;
+        root.RowCount = 7;
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -79,6 +88,9 @@ internal sealed class MainForm : Form
         };
         root.Controls.Add(header);
 
+        ConfigureSelfUpdateBanner();
+        root.Controls.Add(selfUpdateBanner);
+
         var inputs = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
@@ -93,10 +105,14 @@ internal sealed class MainForm : Form
         AddLabeledControl(inputs, "Address", addressTextBox);
         AddLabeledControl(inputs, "Token", tokenTextBox);
         AddLabeledControl(inputs, "Proxy", proxyTextBox);
+        AddLabeledControl(inputs, "GUI update check", selfUpdateCheckIntervalComboBox);
 
         tokenTextBox.UseSystemPasswordChar = true;
         proxyTextBox.PlaceholderText = "Optional HTTP CONNECT or SOCKS5 proxy";
         addressTextBox.PlaceholderText = "https://organization.outsystems.app/sg_...";
+        selfUpdateCheckIntervalComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        selfUpdateCheckIntervalComboBox.Items.AddRange(["daily", "weekly", "monthly", "off"]);
+        selfUpdateCheckIntervalComboBox.SelectedItem = "daily";
 
         verboseCheckBox.Text = "Verbose logs";
         verboseCheckBox.AutoSize = true;
@@ -190,6 +206,45 @@ internal sealed class MainForm : Form
         panel.Controls.Add(control);
     }
 
+    private void ConfigureSelfUpdateBanner()
+    {
+        selfUpdateBanner.Dock = DockStyle.Top;
+        selfUpdateBanner.Visible = false;
+        selfUpdateBanner.AutoSize = true;
+        selfUpdateBanner.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        selfUpdateBanner.Padding = new Padding(12);
+        selfUpdateBanner.Margin = new Padding(0, 0, 0, 12);
+        selfUpdateBanner.BackColor = Color.FromArgb(255, 248, 210);
+
+        var bannerLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 3,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink
+        };
+        bannerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        bannerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        bannerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        selfUpdateBanner.Controls.Add(bannerLayout);
+
+        selfUpdateBannerLabel.AutoSize = true;
+        selfUpdateBannerLabel.Anchor = AnchorStyles.Left;
+        selfUpdateBannerLabel.Margin = new Padding(0, 6, 12, 6);
+
+        selfUpdateButton.Text = "Update and Restart";
+        ConfigureActionButton(selfUpdateButton, 160);
+        selfUpdateButton.Margin = new Padding(0, 0, 8, 0);
+
+        dismissSelfUpdateButton.Text = "Dismiss";
+        ConfigureActionButton(dismissSelfUpdateButton, 90);
+        dismissSelfUpdateButton.Margin = new Padding(0);
+
+        bannerLayout.Controls.Add(selfUpdateBannerLabel, 0, 0);
+        bannerLayout.Controls.Add(selfUpdateButton, 1, 0);
+        bannerLayout.Controls.Add(dismissSelfUpdateButton, 2, 0);
+    }
+
     private void ConfigureEndpointGrid()
     {
         endpointsGrid.Dock = DockStyle.Fill;
@@ -253,6 +308,8 @@ internal sealed class MainForm : Form
         startButton.Click += (_, _) => StartConnector();
         stopButton.Click += async (_, _) => await StopConnectorAsync().ConfigureAwait(true);
         updateBinaryButton.Click += async (_, _) => await InstallOrUpdateBinaryAsync(force: true).ConfigureAwait(true);
+        selfUpdateButton.Click += async (_, _) => await ApplySelfUpdateAsync().ConfigureAwait(true);
+        dismissSelfUpdateButton.Click += (_, _) => HideSelfUpdateBanner();
         connector.OutputReceived += line => BeginInvoke(() => AppendLog(line));
         connector.Exited += exitCode => BeginInvoke(() =>
         {
@@ -262,6 +319,7 @@ internal sealed class MainForm : Form
         Shown += async (_, _) =>
         {
             await RefreshBinaryVersionAsync().ConfigureAwait(true);
+            await CheckSelfUpdateAsync().ConfigureAwait(true);
         };
         FormClosing += async (_, args) =>
         {
@@ -343,6 +401,13 @@ internal sealed class MainForm : Form
         tokenTextBox.Text = configuration.Token;
         proxyTextBox.Text = configuration.Proxy;
         verboseCheckBox.Checked = configuration.Verbose;
+        selfUpdateCheckIntervalComboBox.SelectedItem = configuration.SelfUpdateCheckInterval;
+        if (selfUpdateCheckIntervalComboBox.SelectedItem is null)
+        {
+            selfUpdateCheckIntervalComboBox.SelectedItem = "daily";
+        }
+
+        lastSelfUpdateCheck = configuration.LastSelfUpdateCheck;
         endpointsGrid.Rows.Clear();
 
         foreach (var endpoint in configuration.Endpoints)
@@ -370,7 +435,11 @@ internal sealed class MainForm : Form
 
     private GuiConfiguration ReadConfiguration(LaunchOptions options)
     {
-        return GuiConfiguration.FromLaunchOptions(options);
+        return GuiConfiguration.FromLaunchOptions(options, new GuiConfiguration
+        {
+            SelfUpdateCheckInterval = Convert.ToString(selfUpdateCheckIntervalComboBox.SelectedItem) ?? "daily",
+            LastSelfUpdateCheck = lastSelfUpdateCheck
+        });
     }
 
     private IReadOnlyList<Endpoint> ReadEndpoints()
@@ -407,8 +476,10 @@ internal sealed class MainForm : Form
         addressTextBox.ReadOnly = running;
         tokenTextBox.ReadOnly = running;
         proxyTextBox.ReadOnly = running;
+        selfUpdateCheckIntervalComboBox.Enabled = !running;
         verboseCheckBox.Enabled = !running;
         updateBinaryButton.Enabled = !running;
+        selfUpdateButton.Enabled = !running && availableSelfUpdate is not null;
     }
 
     private async Task InstallOrUpdateBinaryAsync(bool force)
@@ -477,6 +548,107 @@ internal sealed class MainForm : Form
         {
             updateBinaryButton.Enabled = !connector.IsRunning;
         }
+    }
+
+    private async Task CheckSelfUpdateAsync()
+    {
+        var configuration = ReadConfiguration(ReadOptions());
+        if (!IsSelfUpdateCheckDue(configuration))
+        {
+            return;
+        }
+
+        try
+        {
+            var status = await selfUpdateManager.GetUpdateStatusAsync().ConfigureAwait(true);
+            lastSelfUpdateCheck = DateOnly.FromDateTime(DateTime.UtcNow);
+            SaveConfiguration();
+
+            if (status.IsUpdateAvailable)
+            {
+                ShowSelfUpdateBanner(status);
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException or UnauthorizedAccessException)
+        {
+            AppendLog($"GUI update check failed: {ex.Message}");
+        }
+    }
+
+    private async Task ApplySelfUpdateAsync()
+    {
+        if (availableSelfUpdate is null)
+        {
+            return;
+        }
+
+        if (connector.IsRunning)
+        {
+            MessageBox.Show("Stop the connector before updating the GUI.", "Connector is running", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        selfUpdateButton.Enabled = false;
+        dismissSelfUpdateButton.Enabled = false;
+        var previousStatus = statusLabel.Text;
+        try
+        {
+            var progress = new Progress<string>(message =>
+            {
+                statusLabel.Text = message;
+                AppendLog(message);
+            });
+
+            SaveConfiguration();
+            await selfUpdateManager.ApplyUpdateAndRestartAsync(availableSelfUpdate, progress).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException or UnauthorizedAccessException)
+        {
+            AppendLog($"GUI update failed: {ex.Message}");
+            MessageBox.Show(ex.Message, "Cannot update GUI", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            selfUpdateButton.Enabled = true;
+            dismissSelfUpdateButton.Enabled = true;
+            statusLabel.Text = previousStatus;
+        }
+    }
+
+    private void ShowSelfUpdateBanner(SelfUpdateStatus status)
+    {
+        availableSelfUpdate = status;
+        selfUpdateBannerLabel.Text = $"GUI update available: {status.CurrentVersion} -> {status.LatestVersion}";
+        selfUpdateButton.Enabled = !connector.IsRunning;
+        dismissSelfUpdateButton.Enabled = true;
+        selfUpdateBanner.Visible = true;
+        ApplyMinimumSize();
+    }
+
+    private void HideSelfUpdateBanner()
+    {
+        selfUpdateBanner.Visible = false;
+        ApplyMinimumSize();
+    }
+
+    private static bool IsSelfUpdateCheckDue(GuiConfiguration configuration)
+    {
+        if (configuration.SelfUpdateCheckInterval == "off")
+        {
+            return false;
+        }
+
+        if (configuration.LastSelfUpdateCheck is null)
+        {
+            return true;
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var nextCheck = configuration.SelfUpdateCheckInterval switch
+        {
+            "weekly" => configuration.LastSelfUpdateCheck.Value.AddDays(7),
+            "monthly" => configuration.LastSelfUpdateCheck.Value.AddMonths(1),
+            _ => configuration.LastSelfUpdateCheck.Value.AddDays(1)
+        };
+
+        return today >= nextCheck;
     }
 
     private void AppendLog(string line)

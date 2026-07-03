@@ -1,4 +1,5 @@
 using System.Text;
+using System.Globalization;
 using CloudConnectorWindowsGui.Core;
 
 namespace CloudConnectorWindowsGui;
@@ -31,6 +32,8 @@ internal sealed class GuiConfigurationStore
         var token = string.Empty;
         var proxy = string.Empty;
         var verbose = false;
+        var selfUpdateCheckInterval = "daily";
+        DateOnly? lastSelfUpdateCheck = null;
         var endpoints = new List<Endpoint>();
         EndpointDraft? currentEndpoint = null;
 
@@ -78,6 +81,12 @@ internal sealed class GuiConfigurationStore
                 case "verbose":
                     verbose = bool.TryParse(value, out var parsed) && parsed;
                     break;
+                case "self_update_check_interval":
+                    selfUpdateCheckInterval = NormalizeCheckInterval(ParseString(value));
+                    break;
+                case "last_self_update_check":
+                    lastSelfUpdateCheck = ParseDate(value);
+                    break;
             }
         }
 
@@ -89,6 +98,8 @@ internal sealed class GuiConfigurationStore
             Token = token,
             Proxy = proxy,
             Verbose = verbose,
+            SelfUpdateCheckInterval = selfUpdateCheckInterval,
+            LastSelfUpdateCheck = lastSelfUpdateCheck,
             Endpoints = endpoints
         };
     }
@@ -106,6 +117,14 @@ internal sealed class GuiConfigurationStore
         builder.Append("token = \"").Append(Escape(configuration.Token)).AppendLine("\"");
         builder.Append("proxy = \"").Append(Escape(configuration.Proxy)).AppendLine("\"");
         builder.Append("verbose = ").AppendLine(configuration.Verbose.ToString().ToLowerInvariant());
+        builder.Append("self_update_check_interval = \"")
+            .Append(Escape(NormalizeCheckInterval(configuration.SelfUpdateCheckInterval)))
+            .AppendLine("\"");
+        if (configuration.LastSelfUpdateCheck is not null)
+        {
+            builder.Append("last_self_update_check = ")
+                .AppendLine(configuration.LastSelfUpdateCheck.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        }
 
         foreach (var endpoint in configuration.Endpoints)
         {
@@ -197,6 +216,25 @@ internal sealed class GuiConfigurationStore
             .Replace("\f", "\\f", StringComparison.Ordinal)
             .Replace("\r", "\\r", StringComparison.Ordinal)
             .Replace("\"", "\\\"", StringComparison.Ordinal);
+    }
+
+    private static DateOnly? ParseDate(string value)
+    {
+        var trimmed = value.Trim().Trim('"');
+        return DateOnly.TryParseExact(trimmed, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
+            ? parsed
+            : null;
+    }
+
+    private static string NormalizeCheckInterval(string value)
+    {
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "off" => "off",
+            "weekly" => "weekly",
+            "monthly" => "monthly",
+            _ => "daily"
+        };
     }
 
     private static string StripComment(string line)
