@@ -5,8 +5,8 @@
         x:DataType="vm:MainWindowViewModel"
         Title="OutSystems Cloud Connector"
         Icon="/Assets/outsystems.ico"
-        Width="1000" Height="840"
-        MinWidth="920" MinHeight="800"
+        Width="1000" Height="900"
+        MinWidth="920" MinHeight="860"
         WindowStartupLocation="CenterScreen">
     <Grid Margin="20" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*" RowSpacing="14">
         <Menu Grid.Row="0" Margin="-8,-8,0,-6" IsVisible="{Binding !IsMacOS}">
