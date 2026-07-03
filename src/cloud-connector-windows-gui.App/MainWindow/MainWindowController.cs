@@ -55,7 +55,7 @@ public sealed class MainWindowController
 
     public string GetDisplayCommand(MainWindowState state)
     {
-        return ConnectorArguments.ToDisplayCommand("outsystemscc.exe", state.ToLaunchOptions());
+        return ConnectorArguments.ToDisplayCommand(Path.GetFileName(binaryManager.ExecutablePath), state.ToLaunchOptions());
     }
 
     public void StartConnector(MainWindowState state)

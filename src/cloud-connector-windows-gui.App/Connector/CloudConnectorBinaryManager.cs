@@ -8,7 +8,10 @@ namespace CloudConnectorWindowsGui.App;
 
 public sealed class CloudConnectorBinaryManager
 {
-    private const string ExecutableName = "outsystemscc.exe";
+    private static readonly string ExecutableName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+        ? "outsystemscc.exe"
+        : "outsystemscc";
+
     private const string VersionFileName = "version.txt";
 
     private readonly GitHubReleaseClient releaseClient;
@@ -62,7 +65,7 @@ public sealed class CloudConnectorBinaryManager
             return new InstallResult(release.TagName, false);
         }
 
-        var asset = SelectWindowsAsset(release);
+        var asset = SelectPlatformAsset(release);
         progress?.Report($"Downloading {asset.Name}...");
         Directory.CreateDirectory(installDirectory);
 
@@ -88,6 +91,7 @@ public sealed class CloudConnectorBinaryManager
 
             Directory.CreateDirectory(installDirectory);
             File.Copy(extractedExecutable, ExecutablePath, overwrite: true);
+            MarkExecutable(ExecutablePath);
             File.WriteAllText(Path.Combine(installDirectory, VersionFileName), release.TagName);
 
             return new InstallResult(release.TagName, true);
@@ -99,8 +103,9 @@ public sealed class CloudConnectorBinaryManager
         }
     }
 
-    private static GitHubReleaseAsset SelectWindowsAsset(GitHubRelease release)
+    private static GitHubReleaseAsset SelectPlatformAsset(GitHubRelease release)
     {
+        var platform = GetPlatformName();
         var architecture = RuntimeInformation.ProcessArchitecture switch
         {
             Architecture.X86 => "386",
@@ -109,11 +114,42 @@ public sealed class CloudConnectorBinaryManager
         };
 
         var asset = release.Assets.FirstOrDefault(candidate =>
-            candidate.Name.Contains("_windows_", StringComparison.OrdinalIgnoreCase)
+            candidate.Name.Contains($"_{platform}_", StringComparison.OrdinalIgnoreCase)
             && candidate.Name.Contains($"_{architecture}.", StringComparison.OrdinalIgnoreCase)
             && candidate.Name.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase));
 
-        return asset ?? throw new InvalidOperationException($"Release {release.TagName} does not include a Windows {architecture} archive.");
+        return asset ?? throw new InvalidOperationException($"Release {release.TagName} does not include a {platform} {architecture} archive.");
+    }
+
+    private static string GetPlatformName()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return "windows";
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            return "darwin";
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            return "linux";
+        }
+
+        throw new PlatformNotSupportedException($"Unsupported platform: {RuntimeInformation.OSDescription}.");
+    }
+
+    private static void MarkExecutable(string path)
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return;
+        }
+
+        var mode = File.GetUnixFileMode(path);
+        File.SetUnixFileMode(path, mode | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute);
     }
 
     private static async Task VerifyDigestAsync(GitHubReleaseAsset asset, string archivePath, CancellationToken cancellationToken)
