@@ -29,17 +29,17 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Restore
-        run: dotnet restore cloud-connector-windows-gui.sln
+        run: dotnet restore cloud-connector-gui.sln
 
       - name: Build
-        run: dotnet build cloud-connector-windows-gui.sln --configuration Release --no-restore
+        run: dotnet build cloud-connector-gui.sln --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test tests/cloud-connector-windows-gui.Core.Tests/cloud-connector-windows-gui.Core.Tests.csproj --configuration Release --no-restore
+        run: dotnet test tests/cloud-connector-gui.Core.Tests/cloud-connector-gui.Core.Tests.csproj --configuration Release --no-restore
 
       - name: Publish Windows x64 GUI
         run: >
-          dotnet publish src/cloud-connector-windows-gui/cloud-connector-windows-gui.csproj
+          dotnet publish src/cloud-connector-gui/cloud-connector-gui.csproj
           --configuration Release
           --runtime win-x64
           --self-contained true
@@ -47,13 +47,13 @@ jobs:
 
       - name: Package artifact
         shell: pwsh
-        run: Compress-Archive -Path artifacts/win-x64/* -DestinationPath artifacts/cloud-connector-windows-gui-win-x64.zip
+        run: Compress-Archive -Path artifacts/win-x64/* -DestinationPath artifacts/cloud-connector-gui-win-x64.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cloud-connector-windows-gui-win-x64
-          path: artifacts/cloud-connector-windows-gui-win-x64.zip
+          name: cloud-connector-gui-win-x64
+          path: artifacts/cloud-connector-gui-win-x64.zip
           if-no-files-found: error
 
       - name: Upload GitHub release asset
@@ -63,7 +63,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = $env:GITHUB_REF_NAME
-          $asset = "artifacts/cloud-connector-windows-gui-win-x64.zip"
+          $asset = "artifacts/cloud-connector-gui-win-x64.zip"
           if (gh release view $tag 2>$null) {
             gh release upload $tag $asset --clobber
           } else {

@@ -1,8 +1,8 @@
-# cloud-connector-windows-gui
+# cloud-connector-gui
 
 A small Windows-only graphical launcher for `outsystemscc.exe`.
 
-![OutSystems Cloud Connector GUI screenshot](docs/app-screenshot.png)
+![Cloud Connector GUI screenshot](docs/app-screenshot.png)
 
 The app helps users build and run this command without typing the raw CLI syntax:
 
@@ -31,8 +31,8 @@ when GitHub provides one.
 Install .NET 10 SDK, then run:
 
 ```sh
-dotnet test tests/cloud-connector-windows-gui.Core.Tests/cloud-connector-windows-gui.Core.Tests.csproj
-dotnet publish src/cloud-connector-windows-gui/cloud-connector-windows-gui.csproj \
+dotnet test tests/cloud-connector-gui.Core.Tests/cloud-connector-gui.Core.Tests.csproj
+dotnet publish src/cloud-connector-gui/cloud-connector-gui.csproj \
   -c Release \
   -r win-x64 \
   --self-contained true \
@@ -51,10 +51,10 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-The workflow can also be run manually from GitHub Actions with a tag name. It uploads `cloud-connector-windows-gui-win-x64.zip` as both a workflow artifact and a GitHub Release asset.
+The workflow can also be run manually from GitHub Actions with a tag name. It uploads `cloud-connector-gui-win-x64.zip` as both a workflow artifact and a GitHub Release asset.
 
 ## Test
 
 ```sh
-dotnet test tests/cloud-connector-windows-gui.Core.Tests/cloud-connector-windows-gui.Core.Tests.csproj
+dotnet test tests/cloud-connector-gui.Core.Tests/cloud-connector-gui.Core.Tests.csproj
 ```

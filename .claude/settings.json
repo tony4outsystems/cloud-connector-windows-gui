@@ -1,13 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(Add-Type -AssemblyName System.Drawing; $icon = [System.Drawing.Icon]::ExtractAssociatedIcon\\(\"C:\\\\Users\\\\totob\\\\projects\\\\cloud-connector-windows-gui\\\\src\\\\cloud-connector-windows-gui\\\\bin\\\\Debug\\\\net10.0-windows\\\\cloud-connector-windows-gui.exe\"\\); if \\($icon\\) { \"Icon found: $\\($icon.Width\\)x$\\($icon.Height\\)\" } else { \"No icon\" })",
+      "PowerShell(Add-Type -AssemblyName System.Drawing; $icon = [System.Drawing.Icon]::ExtractAssociatedIcon\\(\"C:\\\\Users\\\\totob\\\\projects\\\\cloud-connector-gui\\\\src\\\\cloud-connector-gui\\\\bin\\\\Debug\\\\net10.0-windows\\\\cloud-connector-gui.exe\"\\); if \\($icon\\) { \"Icon found: $\\($icon.Width\\)x$\\($icon.Height\\)\" } else { \"No icon\" })",
       "Bash(python3 -)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(dotnet build *)",
-      "Bash(tasklist //FI \"IMAGENAME eq cloud-connector-windows-gui.exe\")",
-      "Bash(taskkill //IM cloud-connector-windows-gui.exe //F)",
+      "Bash(tasklist //FI \"IMAGENAME eq cloud-connector-gui.exe\")",
+      "Bash(taskkill //IM cloud-connector-gui.exe //F)",
       "Bash(git diff *)",
       "Bash(git apply *)",
       "Read(//tmp/patches/**)",

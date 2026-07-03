@@ -1,0 +1,42 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloud-connector-gui", "src\cloud-connector-gui\cloud-connector-gui.csproj", "{337C2A48-55A9-4C87-9296-357ACECDF9F7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloud-connector-gui.Core", "src\cloud-connector-gui.Core\cloud-connector-gui.Core.csproj", "{253BDAC0-D730-4D16-91D1-3235CF238498}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloud-connector-gui.App", "src\cloud-connector-gui.App\cloud-connector-gui.App.csproj", "{450ED3DD-726D-47C7-9581-BD1D0B583F97}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloud-connector-gui.Core.Tests", "tests\cloud-connector-gui.Core.Tests\cloud-connector-gui.Core.Tests.csproj", "{35778909-65F0-4527-BFF3-06968D39CD56}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloud-connector-gui.App.Tests", "tests\cloud-connector-gui.App.Tests\cloud-connector-gui.App.Tests.csproj", "{25BC866A-0A0D-4372-B6FA-0A1DB302E644}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{337C2A48-55A9-4C87-9296-357ACECDF9F7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{337C2A48-55A9-4C87-9296-357ACECDF9F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{337C2A48-55A9-4C87-9296-357ACECDF9F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{337C2A48-55A9-4C87-9296-357ACECDF9F7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{253BDAC0-D730-4D16-91D1-3235CF238498}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{253BDAC0-D730-4D16-91D1-3235CF238498}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{253BDAC0-D730-4D16-91D1-3235CF238498}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{253BDAC0-D730-4D16-91D1-3235CF238498}.Release|Any CPU.Build.0 = Release|Any CPU
+		{450ED3DD-726D-47C7-9581-BD1D0B583F97}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{450ED3DD-726D-47C7-9581-BD1D0B583F97}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{450ED3DD-726D-47C7-9581-BD1D0B583F97}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{450ED3DD-726D-47C7-9581-BD1D0B583F97}.Release|Any CPU.Build.0 = Release|Any CPU
+		{35778909-65F0-4527-BFF3-06968D39CD56}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{35778909-65F0-4527-BFF3-06968D39CD56}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{35778909-65F0-4527-BFF3-06968D39CD56}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{35778909-65F0-4527-BFF3-06968D39CD56}.Release|Any CPU.Build.0 = Release|Any CPU
+		{25BC866A-0A0D-4372-B6FA-0A1DB302E644}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{25BC866A-0A0D-4372-B6FA-0A1DB302E644}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{25BC866A-0A0D-4372-B6FA-0A1DB302E644}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{25BC866A-0A0D-4372-B6FA-0A1DB302E644}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

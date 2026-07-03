@@ -6,12 +6,12 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build gui",
-      "program": "${workspaceFolder}/src/cloud-connector-windows-gui/bin/Debug/net10.0/cloud-connector-windows-gui",
+      "program": "${workspaceFolder}/src/cloud-connector-gui/bin/Debug/net10.0/cloud-connector-gui",
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
       "console": "internalConsole",
       "windows": {
-        "program": "${workspaceFolder}/src/cloud-connector-windows-gui/bin/Debug/net10.0/cloud-connector-windows-gui.exe"
+        "program": "${workspaceFolder}/src/cloud-connector-gui/bin/Debug/net10.0/cloud-connector-gui.exe"
       },
       "osx": {
         "env": {

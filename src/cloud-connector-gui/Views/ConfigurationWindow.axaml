@@ -1,0 +1,31 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:CloudConnectorGui.ViewModels"
+        x:Class="CloudConnectorGui.Views.ConfigurationWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Configuration"
+        Width="520" SizeToContent="Height"
+        MinWidth="480"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <Grid Margin="24" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="16">
+        <TextBlock Grid.Row="0" Classes="h1" Text="Configuration" />
+
+        <Border Grid.Row="1" Classes="card">
+            <StackPanel Spacing="12">
+                <Grid ColumnDefinitions="150,*">
+                    <TextBlock Grid.Column="0" Text="GUI update check" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding SelfUpdateIntervalOptions}" SelectedItem="{Binding SelfUpdateCheckInterval}" IsEnabled="{Binding CanEditConfiguration}" />
+                </Grid>
+
+                <Grid ColumnDefinitions="Auto,*">
+                    <Button Grid.Column="0" Classes="subtle" Content="Download / Update Binary" Command="{Binding InstallOrUpdateBinaryCommand}" IsEnabled="{Binding CanUpdateBinary}" MinWidth="190" />
+                    <TextBlock Grid.Column="1" Classes="subtle" Text="{Binding BinaryVersionText}" VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <Button Grid.Row="3" Classes="primary" Content="Close" HorizontalAlignment="Right" MinWidth="80" IsDefault="True" IsCancel="True" Click="Close_OnClick" />
+    </Grid>
+</Window>

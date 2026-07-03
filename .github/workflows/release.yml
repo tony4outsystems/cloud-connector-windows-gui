@@ -16,8 +16,8 @@ permissions:
 
 env:
   DOTNET_VERSION: "10.0.x"
-  ARTIFACT_NAME: cloud-connector-windows-gui-win-x64
-  GUI_REPO_PATH: cloud-connector-windows-gui
+  ARTIFACT_NAME: cloud-connector-gui-win-x64
+  GUI_REPO_PATH: cloud-connector-gui
 
 jobs:
   release:
@@ -38,8 +38,8 @@ jobs:
       - name: Publish win-x64 package
         working-directory: ${{ env.GUI_REPO_PATH }}
         run: |
-          dotnet test tests/cloud-connector-windows-gui.Core.Tests/cloud-connector-windows-gui.Core.Tests.csproj
-          dotnet publish src/cloud-connector-windows-gui/cloud-connector-windows-gui.csproj \
+          dotnet test tests/cloud-connector-gui.Core.Tests/cloud-connector-gui.Core.Tests.csproj
+          dotnet publish src/cloud-connector-gui/cloud-connector-gui.csproj \
             -c Release \
             -r win-x64 \
             --self-contained true \

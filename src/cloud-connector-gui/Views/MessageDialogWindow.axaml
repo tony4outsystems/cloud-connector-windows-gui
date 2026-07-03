@@ -1,0 +1,13 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="CloudConnectorGui.Views.MessageDialogWindow"
+        Width="420" SizeToContent="Height"
+        MinHeight="150"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <Grid Margin="24" RowDefinitions="*,Auto" RowSpacing="20">
+        <TextBlock Grid.Row="0" Name="MessageText" TextWrapping="Wrap" />
+        <Button Grid.Row="1" Name="OkButton" Classes="primary" Content="OK" HorizontalAlignment="Right" MinWidth="80" IsDefault="True" IsCancel="True" />
+    </Grid>
+</Window>
