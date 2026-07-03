@@ -11,6 +11,8 @@ namespace CloudConnectorGui;
 
 public sealed class GuiApplication : Application
 {
+    public static bool AlreadyRunning { get; set; }
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -23,10 +25,19 @@ public sealed class GuiApplication : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var viewModel = new MainWindowViewModel();
-            var window = new MainWindow { DataContext = viewModel };
-            viewModel.OwnerWindow = window;
-            desktop.MainWindow = window;
+            if (AlreadyRunning)
+            {
+                var dialog = new MessageDialogWindow("Already running", "Cloud Connector GUI is already running.");
+                dialog.Closed += (_, _) => desktop.Shutdown();
+                desktop.MainWindow = dialog;
+            }
+            else
+            {
+                var viewModel = new MainWindowViewModel();
+                var window = new MainWindow { DataContext = viewModel };
+                viewModel.OwnerWindow = window;
+                desktop.MainWindow = window;
+            }
         }
 
         base.OnFrameworkInitializationCompleted();
