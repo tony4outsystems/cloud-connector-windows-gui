@@ -23,6 +23,10 @@ internal sealed class MainForm : Form
     private readonly CloudConnectorBinaryManager binaryManager = new();
     private readonly GuiConfigurationStore configurationStore = new();
     private readonly TableLayoutPanel root = new();
+    private readonly string logFilePath = Path.Combine(
+        Path.GetDirectoryName(Application.ExecutablePath) ?? AppContext.BaseDirectory,
+        "cloud-connector-windows-gui.log");
+    private bool logFileErrorShown;
     private DateOnly? lastUpdateCheck;
 
     public MainForm()
@@ -537,6 +541,23 @@ internal sealed class MainForm : Form
 
     private void AppendLog(string line)
     {
-        logTextBox.AppendText($"[{DateTime.Now:HH:mm:ss}] {line}{Environment.NewLine}");
+        var timestamp = DateTime.Now;
+        var logLine = $"[{timestamp:HH:mm:ss}] {line}";
+        logTextBox.AppendText($"{logLine}{Environment.NewLine}");
+
+        try
+        {
+            File.AppendAllText(logFilePath, $"[{timestamp:yyyy-MM-dd HH:mm:ss}] {line}{Environment.NewLine}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            if (logFileErrorShown)
+            {
+                return;
+            }
+
+            logFileErrorShown = true;
+            logTextBox.AppendText($"[{DateTime.Now:HH:mm:ss}] Could not write log file {logFilePath}: {ex.Message}{Environment.NewLine}");
+        }
     }
 }
