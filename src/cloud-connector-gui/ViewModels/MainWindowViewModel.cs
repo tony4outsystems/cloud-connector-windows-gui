@@ -12,7 +12,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 {
     private readonly MainWindowController controller = new();
     private readonly MainWindowState state = new();
-    private readonly string logFilePath = Path.Combine(AppContext.BaseDirectory, "cloud-connector-gui.log");
+    private readonly string logFilePath = Path.Combine(GuiPaths.GetAppDataDirectory(), "cloud-connector-gui.log");
     private bool logFileErrorShown;
 
     public Window? OwnerWindow { get; set; }

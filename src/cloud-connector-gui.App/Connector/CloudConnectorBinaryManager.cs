@@ -1,6 +1,5 @@
 using System.Formats.Tar;
 using System.IO.Compression;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 
@@ -184,9 +183,7 @@ public sealed class CloudConnectorBinaryManager
 
     private static string GetDefaultInstallDirectory()
     {
-        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var productName = Assembly.GetExecutingAssembly().GetName().Name ?? "cloud-connector-gui";
-        return Path.Combine(localAppData, productName, "cloud-connector");
+        return Path.Combine(GuiPaths.GetAppDataDirectory(), "cloud-connector");
     }
 
     private static void TryDeleteFile(string path)

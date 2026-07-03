@@ -1,4 +1,5 @@
 using Avalonia;
+using Velopack;
 
 namespace CloudConnectorGui;
 
@@ -9,6 +10,8 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        VelopackApp.Build().Run();
+
         using var singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out var createdNew);
         GuiApplication.AlreadyRunning = !createdNew;
 

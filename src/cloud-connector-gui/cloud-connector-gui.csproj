@@ -8,6 +8,7 @@
     <RootNamespace>CloudConnectorGui</RootNamespace>
     <MinVerTagPrefix>v</MinVerTagPrefix>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <SelfContained>true</SelfContained>
     <ApplicationIcon>Assets\outsystems.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
@@ -27,6 +28,7 @@
     <PackageReference Include="MinVer" Version="6.0.0">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Velopack" Version="1.2.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -70,36 +70,69 @@ jobs:
           --self-contained true
           --output artifacts/${{ matrix.rid }}
 
-      - name: Package artifact (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: Compress-Archive -Path artifacts/${{ matrix.rid }}/* -DestinationPath artifacts/cloud-connector-gui-${{ matrix.rid }}.zip
+      - name: Install vpk
+        run: dotnet tool install --global vpk
 
-      - name: Package artifact (Unix)
-        if: runner.os != 'Windows'
+      - name: Compute version
+        id: version
+        shell: bash
         run: |
-          chmod +x artifacts/${{ matrix.rid }}/cloud-connector-gui
-          tar -czf artifacts/cloud-connector-gui-${{ matrix.rid }}.tar.gz -C artifacts/${{ matrix.rid }} .
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" == v* ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=0.0.1" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Pack (Windows, portable only)
+        if: runner.os == 'Windows'
+        run: >
+          vpk pack
+          --packId cloud-connector-gui
+          --packVersion ${{ steps.version.outputs.version }}
+          --packDir artifacts/${{ matrix.rid }}
+          --mainExe cloud-connector-gui.exe
+          --outputDir release/${{ matrix.rid }}
+          --channel ${{ matrix.rid }}
+          --noInst
+
+      - name: Pack (macOS, portable only)
+        if: runner.os == 'macOS'
+        run: >
+          vpk pack
+          --packId cloud-connector-gui
+          --packVersion ${{ steps.version.outputs.version }}
+          --packDir artifacts/${{ matrix.rid }}
+          --mainExe cloud-connector-gui
+          --outputDir release/${{ matrix.rid }}
+          --channel ${{ matrix.rid }}
+          --noInst
+
+      - name: Pack (Linux, portable AppImage)
+        if: runner.os == 'Linux'
+        run: >
+          vpk pack
+          --packId cloud-connector-gui
+          --packVersion ${{ steps.version.outputs.version }}
+          --packDir artifacts/${{ matrix.rid }}
+          --mainExe cloud-connector-gui
+          --outputDir release/${{ matrix.rid }}
+          --channel ${{ matrix.rid }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: cloud-connector-gui-${{ matrix.rid }}
-          path: |
-            artifacts/cloud-connector-gui-${{ matrix.rid }}.zip
-            artifacts/cloud-connector-gui-${{ matrix.rid }}.tar.gz
+          path: release/${{ matrix.rid }}
           if-no-files-found: ignore
 
-      - name: Upload GitHub release asset
+      - name: Upload GitHub release
         if: startsWith(github.ref, 'refs/tags/v')
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          tag="${GITHUB_REF_NAME}"
-          asset=$(ls artifacts/cloud-connector-gui-${{ matrix.rid }}.* )
-          if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" "$asset" --clobber
-          else
-            gh release create "$tag" "$asset" --title "$tag" --notes "cloud-connector-gui release."
-          fi
+        run: >
+          vpk upload github
+          --repoUrl https://github.com/${{ github.repository }}
+          --token ${{ github.token }}
+          --outputDir release/${{ matrix.rid }}
+          --channel ${{ matrix.rid }}
+          --tag ${{ github.ref_name }}
+          --merge
+          --publish

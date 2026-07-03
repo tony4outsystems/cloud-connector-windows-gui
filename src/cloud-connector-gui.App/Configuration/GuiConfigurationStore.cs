@@ -10,7 +10,7 @@ public sealed class GuiConfigurationStore
     private readonly string filePath;
 
     public GuiConfigurationStore()
-        : this(Path.Combine(AppContext.BaseDirectory, FileName))
+        : this(Path.Combine(GuiPaths.GetAppDataDirectory(), FileName))
     {
     }
 

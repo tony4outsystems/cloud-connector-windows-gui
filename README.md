@@ -21,11 +21,17 @@ outsystemscc.exe --header "token: <token>" [--proxy <proxy>] [-v] <address> R:<l
   [`tony4outsystems/cloud-connector`](https://github.com/tony4outsystems/cloud-connector).
 - Shows the installed connector version and the latest stable version available on GitHub.
 - Manual Download / Update Binary button.
+- Self-updates the GUI itself via [Velopack](https://velopack.io) — see [Release](#release)
+  below. This is a separate, unrelated mechanism from the connector-binary download above.
 
 On first start, the app installs the connector binary into the current user's local app data
 folder. The launcher uses GitHub release JSON from `/releases`, ignores prereleases, selects the
 matching platform/architecture archive, and verifies the release SHA-256 digest when GitHub
 provides one.
+
+The GUI's own configuration (`cloud-connector-gui.toml`) and log file are also stored in the
+current user's local app data folder rather than next to the executable, so they survive
+GUI self-updates (which replace the entire install directory).
 
 ## Build
 
@@ -54,9 +60,17 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-The workflow can also be run manually from GitHub Actions with a tag name. For each platform it
-uploads `cloud-connector-gui-<rid>.zip` (Windows) or `cloud-connector-gui-<rid>.tar.gz` (macOS/Linux)
-as both a workflow artifact and a GitHub Release asset.
+For each platform the workflow publishes a self-contained build, then packages it with the
+[Velopack](https://velopack.io) `vpk` CLI (`vpk pack`) into a portable, unsigned build — no
+installer is produced (`--noInst` on Windows; macOS/Linux packages are already portable
+`.app`/AppImage bundles). Each platform/architecture (`win-x64`, `osx-x64`, `osx-arm64`,
+`linux-x64`) is packaged as its own Velopack release channel and uploaded to the same GitHub
+Release via `vpk upload github --merge --publish`, alongside a plain workflow artifact of the
+packaged output for convenience.
+
+Once installed, running GUIs periodically check this GitHub Release feed and show an in-app
+banner to download and apply the update in place — there's no separate installer download
+needed for subsequent updates.
 
 ## Test
 
