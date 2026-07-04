@@ -61,12 +61,18 @@ git push origin v1.0.0
 ```
 
 For each platform the workflow publishes a self-contained build, then packages it with the
-[Velopack](https://velopack.io) `vpk` CLI (`vpk pack`) into a portable, unsigned build — no
-installer is produced (`--noInst` on Windows; macOS/Linux packages are already portable
-`.app`/AppImage bundles). Each platform/architecture (`win-x64`, `osx-x64`, `osx-arm64`,
-`linux-x64`) is packaged as its own Velopack release channel and uploaded to the same GitHub
-Release via `vpk upload github --merge --publish`, alongside a plain workflow artifact of the
-packaged output for convenience.
+[Velopack](https://velopack.io) `vpk` CLI (`vpk pack --noInst`) into a portable build with no
+installer (Windows and macOS both produce an installer by default unless `--noInst` is passed;
+Linux's AppImage output has no installer concept either way). Each platform/architecture
+(`win-x64`, `osx-x64`, `osx-arm64`, `linux-x64`) is packaged as its own Velopack release
+channel and uploaded to the same GitHub Release via `vpk upload github --merge --publish`,
+alongside a plain workflow artifact of the packaged output for convenience.
+
+The macOS build is ad-hoc signed (`--signAppIdentity -`) — a free, local, certificate-less
+signature. This isn't the same as a paid Apple Developer ID / notarized signature (no such
+signing is configured), but it's required: unsigned `.app` bundles fail Apple Silicon's
+mandatory code-signing check and macOS reports them as "damaged and can't be opened" instead of
+the usual "unidentified developer" prompt. Windows and Linux builds remain fully unsigned.
 
 Once installed, running GUIs periodically check this GitHub Release feed and show an in-app
 banner to download and apply the update in place — there's no separate installer download
